@@ -1,0 +1,88 @@
+from flask import Flask, render_template_string, request, redirect, session
+from datetime import datetime
+
+app = Flask(__name__)
+app.secret_key = 'task4_secret'
+
+messages = [
+    {'user': 'CodeAlpha', 'msg': 'Welcome to Task 4 - Chat App! 🔥', 'time': '10:00 AM'},
+    {'user': 'dhars', 'msg': 'Hello Everyone! Final Task Completed!', 'time': '10:05 AM'}
+]
+users_online = {'dhars': True, 'codealpha': True}
+
+HTML = """
+<!DOCTYPE html>
+<html>
+<head><title>Task 4 - Chat App</title>
+<style>
+body{font-family:Arial;background:#e5ddd5;margin:0;padding:0}
+.header{background:#075e54;color:white;padding:15px;text-align:center;position:sticky;top:0}
+.container{max-width:700px;margin:0 auto;background:white;height:90vh;display:flex;flex-direction:column}
+.chat-box{flex:1;overflow-y:auto;padding:15px;background:#e5ddd5}
+.msg{background:white;padding:10px 15px;border-radius:10px;margin-bottom:10px;max-width:70%;box-shadow:0 1px 2px rgba(0,0,0,0.1)}
+.msg.me{background:#dcf8c6;margin-left:auto}
+.small{font-size:11px;color:gray}
+.input-area{display:flex;padding:10px;background:#f0f0f0}
+.input{flex:1;padding:12px;border:none;border-radius:20px}
+.btn{background:#075e54;color:white;border:none;padding:12px 20px;border-radius:20px;margin-left:10px;cursor:pointer}
+.online{background:#25d366;padding:5px 10px;border-radius:20px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="header">
+<h2 style="margin:0">ChatHub - Real Time Chat</h2>
+<p style="margin:5px">Task 4 - Final Task | <span class="online">{{users|length}} Online</span></p>
+</div>
+<div class="container">
+<div class="chat-box">
+{% for m in messages %}
+<div class="msg {% if m['user']==session.get('user','dhars') %}me{% endif %}">
+<b>{{m['user']}}</b><br>{{m['msg']}}<br><span class="small">{{m['time']}}</span>
+</div>
+{% endfor %}
+</div>
+<div class="input-area">
+{% if 'user' not in session %}
+<form action="/login" method="POST" style="display:flex;width:100%">
+<input class="input" name="username" placeholder="Enter your name to join chat..." required>
+<button class="btn">Join</button>
+</form>
+{% else %}
+<form action="/send" method="POST" style="display:flex;width:100%">
+<input class="input" name="msg" placeholder="Type a message..." required autofocus>
+<button class="btn">Send</button>
+</form>
+<a href="/logout" style="margin-left:10px;text-decoration:none"><button class="btn" style="background:red">Exit</button></a>
+{% endif %}
+</div>
+</div>
+</body>
+</html>
+"""
+
+@app.route('/')
+def home():
+    return render_template_string(HTML, messages=messages, users=users_online, session=session)
+
+@app.route('/login', methods=['POST'])
+def login():
+    session['user'] = request.form['username']
+    users_online[session['user']] = True
+    messages.append({'user': session['user'], 'msg': f"{session['user']} joined the chat!", 'time': datetime.now().strftime("%I:%M %p")})
+    return redirect('/')
+
+@app.route('/send', methods=['POST'])
+def send():
+    if 'user' not in session: return redirect('/')
+    if request.form['msg'].strip():
+        messages.append({'user': session['user'], 'msg': request.form['msg'], 'time': datetime.now().strftime("%I:%M %p")})
+    return redirect('/')
+
+@app.route('/logout')
+def logout():
+    user = session.pop('user', None)
+    if user in users_online: del users_online[user]
+    return redirect('/')
+
+if __name__ == '__main__':
+    app.run(debug=True)
