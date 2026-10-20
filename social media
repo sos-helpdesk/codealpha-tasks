@@ -1,0 +1,119 @@
+from flask import Flask, render_template_string, request, redirect, session
+
+app = Flask(__name__)
+app.secret_key = 'codealpha_task2'
+
+# Database (Simple)
+users = {"demo": "123"}
+posts = [
+    {"id": 1, "user": "demo", "content": "Welcome to CodeAlpha Social! 🚀 This is my first post!", "likes": 2, "comments": ["Nice!"], "liked_by": []}
+]
+follows = {} # {follower: [following]}
+
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<title>CodeAlpha Social</title>
+<style>
+body{font-family:Arial;background:#fafafa;margin:0}
+.navbar{background:#fff;padding:15px 20px;border-bottom:1px solid #ddd;display:flex;justify-content:space-between}
+.container{max-width:600px;margin:20px auto;padding:10px}
+.card{background:#fff;border:1px solid #ddd;border-radius:8px;padding:15px;margin-bottom:15px}
+.btn{background:#0095f6;color:#fff;border:none;padding:8px 15px;border-radius:5px;cursor:pointer}
+input,textarea{width:100%;padding:10px;margin:5px 0;border:1px solid #ddd;border-radius:5px}
+.like{color:#ed4956;cursor:pointer;font-weight:bold}
+</style>
+</head>
+<body>
+<div class="navbar">
+  <b>📸 CodeAlpha Social</b>
+  <div>
+    {% if session.user %} Hi, {{session.user}} | <a href="/logout">Logout</a>
+    {% else %} <a href="/login">Login</a> {% endif %}
+  </div>
+</div>
+<div class="container">
+{% if not session.user %}
+  <div class="card"><h3>Login / Register</h3>
+  <form method="POST" action="/login"><input name="username" placeholder="Username" required><input name="password" placeholder="Password" type="password" required><button class="btn">Login / Register</button></form></div>
+{% else %}
+  <div class="card"><h3>Create Post</h3>
+  <form method="POST" action="/post"><textarea name="content" placeholder="What's on your mind?" required></textarea><button class="btn">Post</button></form></div>
+{% endif %}
+
+{% for p in posts[::-1] %}
+<div class="card">
+  <b>@{{p.user}}</b> {% if session.user and session.user != p.user %}<a href="/follow/{{p.user}}" style="font-size:12px">[Follow/Unfollow]</a>{% endif %}
+  <p>{{p.content}}</p>
+  <div>
+    <a href="/like/{{p.id}}" class="like">❤️ {{p.likes}} Likes</a> | {{p.comments|length}} Comments
+  </div>
+  <div style="margin-top:10px">
+    {% for c in p.comments %}<div style="background:#f0f0f0;padding:5px;margin:2px;border-radius:5px">💬 {{c}}</div>{% endfor %}
+    {% if session.user %}
+    <form method="POST" action="/comment/{{p.id}}" style="display:flex;margin-top:5px"><input name="comment" placeholder="Add a comment..." required><button class="btn">Send</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+</div>
+</body>
+</html>
+"""
+
+@app.route('/')
+def home():
+    return render_template_string(HTML, posts=posts)
+
+@app.route('/login', methods=['POST'])
+def login():
+    u = request.form['username']; pw = request.form['password']
+    if u in users and users[u] != pw:
+        return "Wrong password!"
+    users[u] = pw
+    session['user'] = u
+    return redirect('/')
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect('/')
+
+@app.route('/post', methods=['POST'])
+def create_post():
+    if 'user' not in session: return redirect('/')
+    posts.append({"id": len(posts)+1, "user": session['user'], "content": request.form['content'], "likes": 0, "comments": [], "liked_by": []})
+    return redirect('/')
+
+@app.route('/like/<int:pid>')
+def like(pid):
+    if 'user' not in session: return redirect('/')
+    for p in posts:
+        if p['id'] == pid:
+            if session['user'] not in p['liked_by']:
+                p['likes'] += 1
+                p['liked_by'].append(session['user'])
+            else:
+                p['likes'] -= 1
+                p['liked_by'].remove(session['user'])
+    return redirect('/')
+
+@app.route('/comment/<int:pid>', methods=['POST'])
+def comment(pid):
+    for p in posts:
+        if p['id'] == pid:
+            p['comments'].append(f"{session['user']}: {request.form['comment']}")
+    return redirect('/')
+
+@app.route('/follow/<user>')
+def follow(user):
+    if 'user' not in session: return redirect('/')
+    me = session['user']
+    if me not in follows: follows[me] = []
+    if user in follows[me]: follows[me].remove(user)
+    else: follows[me].append(user)
+    return redirect('/')
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
