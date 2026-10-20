@@ -1,0 +1,105 @@
+from flask import Flask, render_template_string, request, redirect, session
+
+app = Flask(__name__)
+app.secret_key = 'task3_secret'
+
+projects = [
+    {'id': 1, 'title': 'E-Commerce Website', 'desc': 'Task 1 Completed Successfully', 'status': 'Completed', 'user': 'dhars'},
+    {'id': 2, 'title': 'Social Media App', 'desc': 'Task 2 Completed Successfully', 'status': 'Completed', 'user': 'dhars'},
+    {'id': 3, 'title': 'Project Management Tool', 'desc': 'Working on Task 3', 'status': 'In Progress', 'user': 'dhars'}
+]
+
+HTML = """
+<!DOCTYPE html>
+<html>
+<head><title>Task 3 - Project Manager</title>
+<style>
+body{font-family:Arial;background:#f4f5f7;margin:0;padding:20px}
+.header{background:#000;color:white;padding:20px;text-align:center;border-radius:10px}
+.container{max-width:800px;margin:20px auto}
+.card{background:white;padding:15px;border-radius:10px;margin-bottom:15px;box-shadow:0 2px 5px rgba(0,0,0,0.1);border-left:5px solid #007bff}
+.status{padding:5px 10px;border-radius:20px;color:white;font-size:12px}
+.completed{background:green}
+.progress{background:orange}
+.pending{background:red}
+.btn{background:black;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer}
+.input{width:95%;padding:10px;margin:5px 0;border:1px solid #ddd;border-radius:5px}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+</style>
+</head>
+<body>
+<div class="header"><h1>TaskFlow - Project Management</h1><p>Task 3 - CodeAlpha Internship</p></div>
+<div class="container">
+<div class="card">
+<h3>Create New Task</h3>
+<form action="/add" method="POST">
+<input class="input" name="title" placeholder="Project Title" required>
+<input class="input" name="desc" placeholder="Description" required>
+<select class="input" name="status">
+<option>Pending</option><option>In Progress</option><option>Completed</option>
+</select>
+<button class="btn">Add Task</button>
+</form>
+</div>
+
+<div class="grid">
+<div class="card"><h3>📋 To Do</h3>
+{% for p in projects if p['status']=='Pending' %}
+<b>{{p['title']}}</b><br><small>{{p['desc']}}</small><br><br>
+<a href="/update/{{p['id']}}/In Progress"><button class="btn">Start</button></a>
+<a href="/delete/{{p['id']}}"><button class="btn" style="background:red">Delete</button></a><br><br>
+{% endfor %}
+</div>
+
+<div class="card"><h3>🚧 In Progress</h3>
+{% for p in projects if p['status']=='In Progress' %}
+<b>{{p['title']}}</b><br><small>{{p['desc']}}</small><br><br>
+<a href="/update/{{p['id']}}/Completed"><button class="btn" style="background:green">Complete</button></a>
+<a href="/delete/{{p['id']}}"><button class="btn" style="background:red">Delete</button></a><br><br>
+{% endfor %}
+</div>
+
+<div class="card"><h3>✅ Done</h3>
+{% for p in projects if p['status']=='Completed' %}
+<b>{{p['title']}}</b><br><small>{{p['desc']}}</small><br><br>
+<span class="status completed">Completed</span>
+<a href="/delete/{{p['id']}}"><button class="btn" style="background:red">Delete</button></a><br><br>
+{% endfor %}
+</div>
+</div>
+
+</div>
+</body>
+</html>
+"""
+
+@app.route('/')
+def home():
+    return render_template_string(HTML, projects=projects)
+
+@app.route('/add', methods=['POST'])
+def add():
+    projects.append({
+        'id': len(projects)+1,
+        'title': request.form['title'],
+        'desc': request.form['desc'],
+        'status': request.form['status'],
+        'user': 'dhars'
+    })
+    return redirect('/')
+
+@app.route('/update/<int:pid>/<status>')
+def update(pid, status):
+    for p in projects:
+        if p['id'] == pid:
+            p['status'] = status
+    return redirect('/')
+
+@app.route('/delete/<int:pid>')
+def delete(pid):
+    global projects
+    projects = [p for p in projects if p['id'] != pid]
+    return redirect('/')
+
+if __name__ == '__main__':
+    app.run(debug=True)
